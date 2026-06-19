@@ -1,0 +1,103 @@
+{
+  "scenario": "fixed-split-7.2-cloud-fog-ran",
+  "functional_split": "7.2",
+  "topology": {
+    "clouds": 1,
+    "fogs": 4,
+    "rus": 4,
+    "paths": [
+      [
+        "RU:0",
+        "Fog:0",
+        "Cloud:0"
+      ],
+      [
+        "RU:1",
+        "Fog:1",
+        "Cloud:0"
+      ],
+      [
+        "RU:2",
+        "Fog:2",
+        "Cloud:0"
+      ],
+      [
+        "RU:3",
+        "Fog:3",
+        "Cloud:0"
+      ]
+    ]
+  },
+  "simulation_duration_us": 10000.0,
+  "packets_delivered": 2780,
+  "fronthaul_latency_limit_us": 250.0,
+  "fronthaul_latency_avg_us": 132.20000000000002,
+  "fronthaul_latency_p95_us": 132.20000000000073,
+  "fronthaul_latency_max_us": 132.20000000000073,
+  "end_to_end_latency_avg_us": 204.40000000000003,
+  "end_to_end_latency_p95_us": 204.40000000000146,
+  "power": {
+    "cloud_watts": 600,
+    "fog_total_watts": 400,
+    "line_cards": 8,
+    "line_cards_total_watts": 160,
+    "olt_watts": 100,
+    "total_watts": 1260,
+    "energy_wh_during_simulation": 0.0035
+  },
+  "per_ru": {
+    "RU:0": {
+      "fog": "Fog:0",
+      "packets_delivered": 695,
+      "offered_load_gbps": 5.0,
+      "fronthaul_capacity_gbps": 10.0,
+      "fronthaul_utilization": 0.5,
+      "fronthaul_latency_avg_us": 132.20000000000002,
+      "fronthaul_latency_p95_us": 132.20000000000073,
+      "fronthaul_latency_max_us": 132.20000000000073,
+      "fronthaul_busy_time_us": 5003.9999999999345,
+      "midhaul_busy_time_us": 5003.9999999999345,
+      "latency_compliant": true
+    },
+    "RU:1": {
+      "fog": "Fog:1",
+      "packets_delivered": 695,
+      "offered_load_gbps": 5.0,
+      "fronthaul_capacity_gbps": 10.0,
+      "fronthaul_utilization": 0.5,
+      "fronthaul_latency_avg_us": 132.20000000000002,
+      "fronthaul_latency_p95_us": 132.20000000000073,
+      "fronthaul_latency_max_us": 132.20000000000073,
+      "fronthaul_busy_time_us": 5003.9999999999345,
+      "midhaul_busy_time_us": 5003.9999999999345,
+      "latency_compliant": true
+    },
+    "RU:2": {
+      "fog": "Fog:2",
+      "packets_delivered": 695,
+      "offered_load_gbps": 5.0,
+      "fronthaul_capacity_gbps": 10.0,
+      "fronthaul_utilization": 0.5,
+      "fronthaul_latency_avg_us": 132.20000000000002,
+      "fronthaul_latency_p95_us": 132.20000000000073,
+      "fronthaul_latency_max_us": 132.20000000000073,
+      "fronthaul_busy_time_us": 5003.9999999999345,
+      "midhaul_busy_time_us": 5003.9999999999345,
+      "latency_compliant": true
+    },
+    "RU:3": {
+      "fog": "Fog:3",
+      "packets_delivered": 695,
+      "offered_load_gbps": 5.0,
+      "fronthaul_capacity_gbps": 10.0,
+      "fronthaul_utilization": 0.5,
+      "fronthaul_latency_avg_us": 132.20000000000002,
+      "fronthaul_latency_p95_us": 132.20000000000073,
+      "fronthaul_latency_max_us": 132.20000000000073,
+      "fronthaul_busy_time_us": 5003.9999999999345,
+      "midhaul_busy_time_us": 5003.9999999999345,
+      "latency_compliant": true
+    }
+  },
+  "compliant": true
+}

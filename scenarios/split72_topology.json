@@ -1,0 +1,84 @@
+{
+  "scenario": {
+    "name": "fixed-split-7.2-cloud-fog-ran",
+    "functional_split": "7.2",
+    "simulation_duration_us": 10000.0,
+    "packet_size_bytes": 9000,
+    "optical_propagation_us_per_km": 5.0,
+    "fronthaul_latency_limit_us": 250.0,
+    "fronthaul_bandwidth_min_gbps": 5.0,
+    "fronthaul_bandwidth_max_gbps": 10.0
+  },
+  "radio": {
+    "channel_bandwidth_mhz": 20,
+    "mimo": "2x2",
+    "sample_rate_msps": 30,
+    "ports": 2,
+    "symbols_per_subframe": 14,
+    "physical_resource_blocks": 100,
+    "signal_bits": 16,
+    "iq_bits": 16,
+    "phy_overhead_percent": 10,
+    "mac_overhead_percent": 10
+  },
+  "power_watts": {
+    "cloud": 600,
+    "fog": 100,
+    "line_card": 20,
+    "olt": 100
+  },
+  "cloud": {
+    "id": "Cloud:0",
+    "processing_delay_us": 20.0
+  },
+  "rus": [
+    {
+      "id": "RU:0",
+      "fog": "Fog:0",
+      "offered_load_gbps": 5.0,
+      "fronthaul_capacity_gbps": 10.0,
+      "fronthaul_distance_km": 20.0,
+      "fronthaul_switching_delay_us": 5.0,
+      "fog_processing_delay_us": 20.0,
+      "midhaul_capacity_gbps": 10.0,
+      "midhaul_distance_km": 8.0,
+      "midhaul_switching_delay_us": 5.0
+    },
+    {
+      "id": "RU:1",
+      "fog": "Fog:1",
+      "offered_load_gbps": 5.0,
+      "fronthaul_capacity_gbps": 10.0,
+      "fronthaul_distance_km": 20.0,
+      "fronthaul_switching_delay_us": 5.0,
+      "fog_processing_delay_us": 20.0,
+      "midhaul_capacity_gbps": 10.0,
+      "midhaul_distance_km": 8.0,
+      "midhaul_switching_delay_us": 5.0
+    },
+    {
+      "id": "RU:2",
+      "fog": "Fog:2",
+      "offered_load_gbps": 5.0,
+      "fronthaul_capacity_gbps": 10.0,
+      "fronthaul_distance_km": 20.0,
+      "fronthaul_switching_delay_us": 5.0,
+      "fog_processing_delay_us": 20.0,
+      "midhaul_capacity_gbps": 10.0,
+      "midhaul_distance_km": 8.0,
+      "midhaul_switching_delay_us": 5.0
+    },
+    {
+      "id": "RU:3",
+      "fog": "Fog:3",
+      "offered_load_gbps": 5.0,
+      "fronthaul_capacity_gbps": 10.0,
+      "fronthaul_distance_km": 20.0,
+      "fronthaul_switching_delay_us": 5.0,
+      "fog_processing_delay_us": 20.0,
+      "midhaul_capacity_gbps": 10.0,
+      "midhaul_distance_km": 8.0,
+      "midhaul_switching_delay_us": 5.0
+    }
+  ]
+}
