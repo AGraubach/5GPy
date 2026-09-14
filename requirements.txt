@@ -1,0 +1,6 @@
+simpy
+networkx
+scipy
+psutil
+numpy
+matplotlib

@@ -1,54 +1,139 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!-- Configuration file. All simulation parameters values must be put here. -->
+<!-- Scaled-up scenario (20 RRHs / 10 Edge nodes / 1 Cloud, 2 RRHs/Edge),
+     grounded in the parameters the group's own prior Cloud-Fog work used as its state of the
+     art (old/graph.py, old/simulator.py - Tinini et al. 2019, cited in README.md):
+       - CPRI line rate 614 Mbps per RRH (old/graph.py: cpri_line) - the per-RRH reference load unit.
+       - fogs=10 (old/graph.py) - reused here as the Edge node count.
+       - fog:cloud capacity ratio 1:10 (old/graph.py) - reused directionally (Edge << Cloud).
+       - fog/cloud activation cost 300/600 and fog/cloud access delay (old/graph.py: costs,
+         fog_delay, cloud_delay) - unchanged from the Test Sample scenario.
+     Edge capacity=2, RRHs/Edge=2: each RRH's placement candidates are
+     restricted by simulation.py (MAX_CANDIDATE_HOPS) to its local Edge/ring-neighbors + Cloud,
+     not every Edge network-wide - found while validating this scale-up to be necessary for
+     stability (a globally-competing heuristic flooded ring transit traffic well before any
+     Edge's own capacity was the bottleneck). See scripts/run_load_sweep.py for how far this
+     RRHs/Edge ratio can grow before the system stops keeping up in real time. -->
 
 <config>
-<!-- Input parameters of the simulation-->
     <InputParameters>
-        <switchTime>0.0001</switchTime>            
-        <frameProcTime>0.0001</frameProcTime>            
+        <switchTime>0.0001</switchTime>
+        <frameProcTime>0.0001</frameProcTime>
         <transmissionTime>0.0000001</transmissionTime>
         <localTransmissionTime>0.0000001</localTransmissionTime>
         <cpriFrameGenerationTime>0.001</cpriFrameGenerationTime>
         <distributionAverage>1000</distributionAverage>
         <cpriMode>CPRI</cpriMode>
-        <!-- Limits of the cartesian plane representing all the base stations topology -->
-        <limitAxisY>2</limitAxisY>
-        <limitAxisX>2</limitAxisX>
-        <!-- Values to increase the size of each base station regarding its representation on a cartesian plane -->
+        <utilizationSampleInterval>1</utilizationSampleInterval>
+        <simulationDuration>30</simulationDuration>
+        <limitAxisY>4</limitAxisY>
+        <limitAxisX>5</limitAxisX>
         <stepAxisY>1</stepAxisY>
-        <stepAxisX>1</stepAxisX>       
+        <stepAxisX>1</stepAxisX>
     </InputParameters>
 
-<!-- RRHs -->
     <RRHs>
         <RRH aId = "0" />
         <RRH aId = "1" />
         <RRH aId = "2" />
         <RRH aId = "3" />
+        <RRH aId = "4" />
+        <RRH aId = "5" />
+        <RRH aId = "6" />
+        <RRH aId = "7" />
+        <RRH aId = "8" />
+        <RRH aId = "9" />
+        <RRH aId = "10" />
+        <RRH aId = "11" />
+        <RRH aId = "12" />
+        <RRH aId = "13" />
+        <RRH aId = "14" />
+        <RRH aId = "15" />
+        <RRH aId = "16" />
+        <RRH aId = "17" />
+        <RRH aId = "18" />
+        <RRH aId = "19" />
     </RRHs>
 
-<!-- Network nodes -->
     <NetworkNodes>
         <Node aId = "0" aType = "Switch" capacity = "10000" qos = "Standard" />
         <Node aId = "1" aType = "Switch" capacity = "10000" qos = "Standard" />
         <Node aId = "2" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "3" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "4" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "5" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "6" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "7" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "8" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "9" aType = "Switch" capacity = "10000" qos = "Standard" />
     </NetworkNodes>
 
-<!-- Processing nodes -->
     <ProcessingNodes>
-        <Proc aId = "0" aType = "Cloud"  capacity = "10000" qos = "Standard" />
+        <Proc aId = "0" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "1" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "2" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "3" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "4" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "5" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "6" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "7" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "8" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "9" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "0" aType = "Cloud" role = "Cloud" capacity = "10000" qos = "Standard" accessDelay = "0.0001961308" activationPower = "600" />
     </ProcessingNodes>
 
-<!-- Connections to construct the directed graph -->
+    <ORANFunctions>
+        <Function aId = "0" aType = "NonRTRIC" />
+        <Function aId = "0" aType = "NearRTRIC" />
+        <Function aId = "0" aType = "RTRIC" />
+    </ORANFunctions>
+
+    <UseCases>
+        <UseCase aId = "IoT" maxLatency = "1.0" minBandwidth = "0.1" trafficPattern = "periodic" />
+    </UseCases>
+
     <Edges>
         <Edge  source = "RRH:0" destiny = "Switch:0" weight = "5.5" />
-        <Edge  source = "RRH:1" destiny = "Switch:1" weight = "5.5" />
-        <Edge  source = "RRH:2" destiny = "Switch:0" weight = "5.5" />
-        <Edge  source = "RRH:3" destiny = "Switch:2" weight = "5.5" />
-        <Edge  source = "Switch:0" destiny = "Switch:1" weight = "10" />
-        <Edge  source = "Switch:1" destiny = "Switch:2" weight = "3.4" />
-        <Edge  source = "Switch:2" destiny = "Switch:0" weight = "7" />
-        <Edge  source = "Switch:2" destiny = "Cloud:0" weight = "10" />
-    </Edges>>
+        <Edge  source = "RRH:1" destiny = "Switch:0" weight = "5.5" />
+        <Edge  source = "RRH:2" destiny = "Switch:1" weight = "5.5" />
+        <Edge  source = "RRH:3" destiny = "Switch:1" weight = "5.5" />
+        <Edge  source = "RRH:4" destiny = "Switch:2" weight = "5.5" />
+        <Edge  source = "RRH:5" destiny = "Switch:2" weight = "5.5" />
+        <Edge  source = "RRH:6" destiny = "Switch:3" weight = "5.5" />
+        <Edge  source = "RRH:7" destiny = "Switch:3" weight = "5.5" />
+        <Edge  source = "RRH:8" destiny = "Switch:4" weight = "5.5" />
+        <Edge  source = "RRH:9" destiny = "Switch:4" weight = "5.5" />
+        <Edge  source = "RRH:10" destiny = "Switch:5" weight = "5.5" />
+        <Edge  source = "RRH:11" destiny = "Switch:5" weight = "5.5" />
+        <Edge  source = "RRH:12" destiny = "Switch:6" weight = "5.5" />
+        <Edge  source = "RRH:13" destiny = "Switch:6" weight = "5.5" />
+        <Edge  source = "RRH:14" destiny = "Switch:7" weight = "5.5" />
+        <Edge  source = "RRH:15" destiny = "Switch:7" weight = "5.5" />
+        <Edge  source = "RRH:16" destiny = "Switch:8" weight = "5.5" />
+        <Edge  source = "RRH:17" destiny = "Switch:8" weight = "5.5" />
+        <Edge  source = "RRH:18" destiny = "Switch:9" weight = "5.5" />
+        <Edge  source = "RRH:19" destiny = "Switch:9" weight = "5.5" />
+        <Edge  source = "Switch:0" destiny = "Switch:1" weight = "7" />
+        <Edge  source = "Switch:1" destiny = "Switch:2" weight = "7" />
+        <Edge  source = "Switch:2" destiny = "Switch:3" weight = "7" />
+        <Edge  source = "Switch:3" destiny = "Switch:4" weight = "7" />
+        <Edge  source = "Switch:4" destiny = "Switch:5" weight = "7" />
+        <Edge  source = "Switch:5" destiny = "Switch:6" weight = "7" />
+        <Edge  source = "Switch:6" destiny = "Switch:7" weight = "7" />
+        <Edge  source = "Switch:7" destiny = "Switch:8" weight = "7" />
+        <Edge  source = "Switch:8" destiny = "Switch:9" weight = "7" />
+        <Edge  source = "Switch:9" destiny = "Switch:0" weight = "7" />
+        <Edge  source = "Switch:0" destiny = "Edge:0" weight = "1" />
+        <Edge  source = "Switch:1" destiny = "Edge:1" weight = "1" />
+        <Edge  source = "Switch:2" destiny = "Edge:2" weight = "1" />
+        <Edge  source = "Switch:3" destiny = "Edge:3" weight = "1" />
+        <Edge  source = "Switch:4" destiny = "Edge:4" weight = "1" />
+        <Edge  source = "Switch:5" destiny = "Edge:5" weight = "1" />
+        <Edge  source = "Switch:6" destiny = "Edge:6" weight = "1" />
+        <Edge  source = "Switch:7" destiny = "Edge:7" weight = "1" />
+        <Edge  source = "Switch:8" destiny = "Edge:8" weight = "1" />
+        <Edge  source = "Switch:9" destiny = "Edge:9" weight = "1" />
+        <Edge  source = "Switch:0" destiny = "Cloud:0" weight = "10" />
+    </Edges>
 </config>

@@ -1,6 +1,60 @@
 #this is the utility module, where every utility method must be put, including methods that calculates metrics from the simulation
 import xml.etree.ElementTree as ET
 import networkx as nx
+import csv
+
+#metrics recorded during the simulation, exported to CSV by exportMetricsCSV at the end of simulation.py
+latencyRecords = []
+migrationRecords = []
+utilizationRecords = []
+blockingRecords = []
+activeNodeRecords = []
+energyRecords = []
+
+#records whether a frame met its control loop's latency budget (maxLatency in seconds, may be None for NonRT)
+def recordLatencyCompliance(controlLoop, latency, maxLatency, time):
+	compliant = latency <= maxLatency if maxLatency is not None else None
+	latencyRecords.append({"controlLoop": controlLoop, "latency": latency, "maxLatency": maxLatency, "compliant": compliant, "time": time})
+
+#records a placement change (migration) of a Layer 2/3 function between two nodes
+def recordMigration(functionId, fromNode, toNode, time):
+	migrationRecords.append({"function": functionId, "from": fromNode, "to": toNode, "time": time})
+
+#records a node's load/capacity sample, taken periodically by network.utilizationMonitor
+def recordUtilization(nodeId, time, load, capacity):
+	utilizationRecords.append({"node": nodeId, "time": time, "load": load, "capacity": capacity, "ratio": load / capacity if capacity else 0.0})
+
+#records a placement request that no candidate node could accept (all were at/over capacity) -
+#the same "lost traffic" that old/graph.py's getBlockingProbability computed from a min-cost flow
+def recordBlocking(functionId, controlLoop, time):
+	blockingRecords.append({"function": functionId, "controlLoop": controlLoop, "time": time})
+
+#records how many of the candidate nodes are currently active (hosting >=1 function), taken
+#periodically by network.controlPlaneMonitor - the SimPy-era equivalent of old/graph.py's countActNodes()
+def recordActiveNodes(time, activeCount, totalCount):
+	activeNodeRecords.append({"time": time, "activeCount": activeCount, "totalCount": totalCount, "ratio": activeCount / totalCount if totalCount else 0.0})
+
+#records the current placement's energy cost against the "every node always on" baseline - the
+#SimPy-era equivalent of old/graph.py's overallPowerConsumption(), taken periodically by network.controlPlaneMonitor
+def recordEnergy(time, energy, energyAlwaysOn):
+	savings = (energyAlwaysOn - energy) / energyAlwaysOn if energyAlwaysOn else 0.0
+	energyRecords.append({"time": time, "energy": energy, "energyAlwaysOn": energyAlwaysOn, "savingsRatio": savings})
+
+#writes the recorded metrics as CSV files under outputDir, for offline analysis
+def exportMetricsCSV(outputDir="."):
+	_writeCSV("{}/metrics_latency.csv".format(outputDir), latencyRecords, ["controlLoop", "latency", "maxLatency", "compliant", "time"])
+	_writeCSV("{}/metrics_migrations.csv".format(outputDir), migrationRecords, ["function", "from", "to", "time"])
+	_writeCSV("{}/metrics_utilization.csv".format(outputDir), utilizationRecords, ["node", "time", "load", "capacity", "ratio"])
+	_writeCSV("{}/metrics_blocking.csv".format(outputDir), blockingRecords, ["function", "controlLoop", "time"])
+	_writeCSV("{}/metrics_active_nodes.csv".format(outputDir), activeNodeRecords, ["time", "activeCount", "totalCount", "ratio"])
+	_writeCSV("{}/metrics_energy.csv".format(outputDir), energyRecords, ["time", "energy", "energyAlwaysOn", "savingsRatio"])
+
+def _writeCSV(path, records, fieldnames):
+	with open(path, "w", newline="") as f:
+		writer = csv.DictWriter(f, fieldnames=fieldnames)
+		writer.writeheader()
+		for r in records:
+			writer.writerow(r)
 
 #XML parser
 def xmlParser(xmlFile):

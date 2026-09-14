@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Configuration file. All simulation parameters values must be put here. -->
+<!-- "Test Sample" scenario: 1 use case (IoT), small fixed topology with one Edge and one Cloud node,
+     used as the minimal incremental scenario before generalizing to multiple users/use cases. -->
+
+<config>
+<!-- Input parameters of the simulation-->
+    <InputParameters>
+        <switchTime>0.0001</switchTime>
+        <frameProcTime>0.0001</frameProcTime>
+        <transmissionTime>0.0000001</transmissionTime>
+        <localTransmissionTime>0.0000001</localTransmissionTime>
+        <cpriFrameGenerationTime>0.001</cpriFrameGenerationTime>
+        <distributionAverage>1000</distributionAverage>
+        <cpriMode>CPRI</cpriMode>
+        <!-- how often (simulated seconds) node utilization is sampled for metrics_utilization.csv -->
+        <utilizationSampleInterval>1</utilizationSampleInterval>
+        <!-- how long (simulated seconds) env.run() executes for -->
+        <simulationDuration>3600</simulationDuration>
+        <!-- Limits of the cartesian plane representing all the base stations topology -->
+        <limitAxisY>2</limitAxisY>
+        <limitAxisX>2</limitAxisX>
+        <!-- Values to increase the size of each base station regarding its representation on a cartesian plane -->
+        <stepAxisY>1</stepAxisY>
+        <stepAxisX>1</stepAxisX>
+    </InputParameters>
+
+<!-- RRHs -->
+    <RRHs>
+        <RRH aId = "0" />
+        <RRH aId = "1" />
+        <RRH aId = "2" />
+        <RRH aId = "3" />
+    </RRHs>
+
+<!-- Network nodes -->
+    <NetworkNodes>
+        <Node aId = "0" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "1" aType = "Switch" capacity = "10000" qos = "Standard" />
+        <Node aId = "2" aType = "Switch" capacity = "10000" qos = "Standard" />
+    </NetworkNodes>
+
+<!-- Processing nodes (Layer 3 hosts): role = "Edge" or "Cloud" selects EdgeNode/CloudNode.
+     accessDelay (s) is the extra propagation/access delay of reaching that tier, reusing the
+     fog/cloud delay values from the group's prior Cloud-Fog work (old/graph.py: fog_delay, cloud_delay).
+     activationPower is the fixed power cost while the node hosts >=1 function, reusing the same
+     fog/cloud cost ratio as old/graph.py's costs dict (fog=300 per node, cloud=600 for the shared
+     node) - each activated Edge costs less individually, but the Cloud is meant to be shared across
+     all traffic that does not need Edge proximity, which is what the energy metric evaluates.
+     Edge capacity is intentionally small for this Test Sample, to exercise the ControlPlane's
+     Edge-first-then-Cloud fallback when Edge capacity is exhausted. -->
+    <ProcessingNodes>
+        <Proc aId = "0" aType = "Edge"  role = "Edge"  capacity = "2"     qos = "Standard" accessDelay = "0.0000980654" activationPower = "300" />
+        <Proc aId = "0" aType = "Cloud" role = "Cloud" capacity = "10000" qos = "Standard" accessDelay = "0.0001961308" activationPower = "600" />
+    </ProcessingNodes>
+
+<!-- Layer 2 (O-RAN Applications): Non-RT RIC (rApps), Near-RT RIC (xApps) and RT-RIC, as defined
+     in the qualification's 3-layer architecture. They are placed once at bootstrap by the same
+     ControlPlane/LatencyAwarePolicy used for the vBBUs (research question 4: where to place the
+     Near-RT RIC/xApps). Simulating their E2/A1 message traffic is not yet implemented. -->
+    <ORANFunctions>
+        <Function aId = "0" aType = "NonRTRIC" />
+        <Function aId = "0" aType = "NearRTRIC" />
+        <Function aId = "0" aType = "RTRIC" />
+    </ORANFunctions>
+
+<!-- Layer 1 (User Application) use cases. This Test Sample fixes a single use case (IoT) for all
+     RRHs' UEs. maxLatency (s) / minBandwidth are placeholders - adjust them once the "definição de
+     métricas, parâmetros e cenários" step of the methodology sets the actual IoT requirements. -->
+    <UseCases>
+        <UseCase aId = "IoT" maxLatency = "1.0" minBandwidth = "0.1" trafficPattern = "periodic" />
+    </UseCases>
+
+<!-- Connections to construct the directed graph -->
+    <Edges>
+        <Edge  source = "RRH:0" destiny = "Switch:0" weight = "5.5" />
+        <Edge  source = "RRH:1" destiny = "Switch:1" weight = "5.5" />
+        <Edge  source = "RRH:2" destiny = "Switch:0" weight = "5.5" />
+        <Edge  source = "RRH:3" destiny = "Switch:2" weight = "5.5" />
+        <Edge  source = "Switch:0" destiny = "Switch:1" weight = "10" />
+        <Edge  source = "Switch:1" destiny = "Switch:2" weight = "3.4" />
+        <Edge  source = "Switch:2" destiny = "Switch:0" weight = "7" />
+        <Edge  source = "Switch:0" destiny = "Edge:0" weight = "1" />
+        <Edge  source = "Switch:2" destiny = "Cloud:0" weight = "10" />
+    </Edges>
+</config>

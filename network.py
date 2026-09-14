@@ -45,19 +45,29 @@ class ecpriFrame(Frame):
 		self.QoS = QoS
 		self.size = size
 
+#this class represents Layer 1 (User Application) requirements for a use case (e.g., IoT)
+#maxLatency (s) and minBandwidth are the requirements that drive Layer 2/3 function placement,
+#trafficPattern is kept for future traffic generators specific to each use case
+class UseCase(object):
+	def __init__(self, aId, maxLatency, minBandwidth, trafficPattern):
+		self.aId = aId
+		self.maxLatency = maxLatency
+		self.minBandwidth = minBandwidth
+		self.trafficPattern = trafficPattern
+
 #this class represents a basic user equipment
-#aId is the UE identification, posY and posX are the locations of the UE in a cartesian plane, applicationType is the kind of application accessed by the UE (e.g., video, messaging)
+#aId is the UE identification, posY and posX are the locations of the UE in a cartesian plane, useCase is the Layer 1 use case (e.g., IoT) accessed by the UE
 class UserEquipment(object):
-	def __init__(self, env, aId, servingRRH, applicationType, localTransmissionTime):
+	def __init__(self, env, aId, servingRRH, useCase, localTransmissionTime):
 		self.env = env
 		self.aId = aId
 		self.servingRRH = servingRRH
 		#set the beginning position of each UE as the middle of its base station area
-		self.posY = self.servingRRH.y2/2 
-		self.posX = self.servingRRH.x2/2 
+		self.posY = self.servingRRH.y2/2
+		self.posX = self.servingRRH.x2/2
 		#self.frameProcTime = frameProcTime
 		self.localTransmissionTime = localTransmissionTime
-		self.applicationType = applicationType
+		self.useCase = useCase
 		self.ackFrames = simpy.Store(self.env)
 		self.initiation = self.env.process(self.run())
 		#self.action = self.env.process(self.sendFrame())
@@ -98,7 +108,7 @@ class UserEquipment(object):
 #this class represents a generic RRH
 #it generates a bunch of UEs, receives/transmits baseband signals from/to them, generate eCPRI frames and send/receive them to/from processing
 class RRH(object):
-	def __init__(self, env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, graph, cpriMode):
+	def __init__(self, env, aId, distribution, cpriFrameGenerationTime, transmissionTime, localTransmissionTime, graph, cpriMode, controlPlane, candidateNodes, useCase):
 		self.env = env
 		self.nextNode = None
 		self.aType = "RRH"
@@ -107,6 +117,12 @@ class RRH(object):
 		self.users = []#list of active UEs served by this RRH
 		self.nodes_connection = []#binary array that keeps the connection fron this RRH to fog nodes and cloud node(s)
 		self.distribution = distribution#the distribution for the traffic generator distribution
+		#Layer 3 (Fronthaul): the vBBU is the placeable function processing this RRH's baseband signal.
+		#Its hostNode (Edge or Cloud) is decided/updated by the ControlPlane on every uplink frame.
+		self.controlPlane = controlPlane
+		self.candidateNodes = candidateNodes#Edge/Cloud nodes eligible to host this RRH's vBBU
+		self.useCase = useCase#Layer 1 use case (e.g., IoT) served by this RRH's UEs
+		self.vbbu = VBBU(aId, self)
 		self.trafficGen = self.env.process(self.run())#initiate the built-in traffic generator
 		#self.genFrame = self.env.process(self.takeFrameUE())
 		self.uplinkTransmitCPRI = self.env.process(self.uplinkTransmitCPRI())#send eCPRI frames to a processing node
@@ -139,7 +155,7 @@ class RRH(object):
 			yield self.env.timeout(self.distribution(self))
 			#a limit for the generation of UEs for testing purposes
 			if len(self.users) < 2:
-				ue = UserEquipment(self.env, i, self, "Messaging", self.localTransmissionTime)
+				ue = UserEquipment(self.env, i, self, self.useCase, self.localTransmissionTime)
 				self.users.append(ue)
 				#print("{} generated UE {} at {}".format(self.aId, hash(ue), self.env.now))
 				i += 1
@@ -154,10 +170,20 @@ class RRH(object):
 	def uplinkTransmitCPRI(self):
 		global generatedCPRI
 		frame_id = 1
-		length, path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
 		while True:
 			yield self.env.timeout(self.cpriFrameGenerationTime)
-			print("{} generating eCPRI frame {} at {}".format(self.aId, self.aId+"->"+str(frame_id), self.env.now))
+			#ask the ControlPlane where this RRH's vBBU (Layer 3) should be hosted right now -
+			#this is what makes placement dynamic: it is re-evaluated on every uplink frame
+			#instead of being fixed once for the whole simulation
+			hostNode = self.controlPlane.placeFunction(self.vbbu, self.candidateNodes)
+			if hostNode is None:
+				#blocked: no candidate node had spare capacity for this RRH's vBBU - the frame is
+				#lost rather than forced onto an overloaded node, matching the "lost traffic" the
+				#old ILP-based simulator counted in getBlockingProbability()
+				print("{} blocked - no candidate node has capacity for its vBBU at {}".format(self.aId, self.env.now))
+				frame_id += 1
+				continue
+			print("{} generating eCPRI frame {} at {} (vBBU hosted at {})".format(self.aId, self.aId+"->"+str(frame_id), self.env.now, hostNode.aId))
 			#print(psutil.virtual_memory())
 			#If traditional CPRI is used, create a frame with fixed bandwidth (not implemented yet)
 			activeUsers = []
@@ -166,8 +192,7 @@ class RRH(object):
 				if self.users:
 					for i in self.users:
 						activeUsers.append(i)
-				#Cloud:0 is the generic destiny for tests purposes - An algorithm will be used to decide in which node it will be placed
-				eCPRIFrame = ecpriFrame(self.aId+"->"+str(frame_id), None, self, "Cloud:0", activeUsers, None, None)
+				eCPRIFrame = ecpriFrame(self.aId+"->"+str(frame_id), None, self, hostNode.aId, activeUsers, None, None)
 				if self.users:
 					for i in self.users:
 						i.lastLatency = i.latency
@@ -179,13 +204,18 @@ class RRH(object):
 					for i in self.users:
 						activeUsers.append(i)
 				frame_size = len(activeUsers)
-				eCPRIFrame = ecpriFrame(frame_id, None, self, "Cloud:0", activeUsers, None, frame_size)
+				eCPRIFrame = ecpriFrame(frame_id, None, self, hostNode.aId, activeUsers, None, frame_size)
 				#TODO atualizar o tempo em que cada UE mandou o quadro para o RRH em função da sua distância até ele (ex. env.now - transmissiontTime,  transmissionTime vai ser dinâmico)
 				if self.users:
 					for i in self.users:
 						i.latency = (i.latency + self.env.now)/frame_id
-			#calculates the shortest path
-			#length, path = nx.single_source_dijkstra(self.graph, self.aId, "Cloud:0")#For now, cloud is the default destiny
+			#tag the frame with the fronthaul (RT) control loop requirement and its creation time,
+			#so the destination node can check latency compliance for this loop once it arrives
+			eCPRIFrame.createdAt = self.env.now
+			eCPRIFrame.controlLoop = self.vbbu.controlLoop
+			eCPRIFrame.maxLatency = self.vbbu.maxLatency
+			#calculates the shortest path to wherever the vBBU is hosted right now
+			length, path = nx.single_source_dijkstra(self.graph, self.aId, hostNode.aId)
 			#remove the aId of this node from the path
 			eCPRIFrame.nextHop = copy.copy(path)
 			eCPRIFrame.inversePath = list(eCPRIFrame.nextHop)
@@ -276,9 +306,15 @@ class ProcessingNode(ActiveNode):
 			if self.aId == request.dst:#this is the destiny node. Process it and compute the downlink path
 				#print("Request {} arrived at destination {}".format(request.aId, self.aId))
 				request.nextHop = request.inversePath
+				#if the request carries a control loop requirement (e.g., set by RRH.uplinkTransmitCPRI),
+				#record whether it met the control loop's latency budget
+				if hasattr(request, "createdAt"):
+					measuredLatency = self.env.now - request.createdAt
+					util.recordLatencyCompliance(getattr(request, "controlLoop", None), measuredLatency, getattr(request, "maxLatency", None), self.env.now)
 			print("{} buffer load is {}".format(self.aId, self.currentLoad))
 			print("{} processing request {} at {}".format(self.aId, request.aId, self.env.now))
-			yield self.env.timeout(self.procTime)
+			#EdgeNode/CloudNode add their tier's accessDelay on top of the base processing time
+			yield self.env.timeout(self.procTime + getattr(self, "accessDelay", 0))
 			#update the load on the buffer after processing the frame
 			self.currentLoad -= 1
 			self.sendRequest(request)
@@ -327,8 +363,163 @@ class NetworkNode(ActiveNode):
 		destiny.currentLoad += 1
 
 
-#this class represents the control plane that will be responsible to invoke algorithms to place vBBUs and to assign wavelengths
-#it will keep the representations of the topology that will be used by the algorithms, e.g., graph or ILP
-#in the case of the ILP, it is necessary that every object created is represented as binary arrays for the ILP to solve it, as we did before
+#a general processing node hosted at the Edge tier of the Cloud-Edge continuum
+#accessDelay models the extra propagation/access delay of reaching this tier (defaults follow the
+#fog-tier delay used in the group's prior Cloud-Fog work, e.g., old/graph.py's fog_delay).
+#activationPower is the fixed power cost incurred while this node hosts at least one function -
+#the same "cost per activated node" idea as old/graph.py's costs["fog{}"]/costs["cloud"], used
+#there by overallPowerConsumption() to reward consolidating onto fewer active nodes
+class EdgeNode(ProcessingNode):
+	def __init__(self, env, aId, aType, capacity, qos, procTime, transmissionTime, graph, accessDelay, activationPower):
+		super().__init__(env, aId, aType, capacity, qos, procTime, transmissionTime, graph)
+		self.role = "Edge"
+		self.accessDelay = accessDelay
+		self.activationPower = activationPower
+
+#a general processing node hosted at the Cloud tier of the Cloud-Edge continuum
+class CloudNode(ProcessingNode):
+	def __init__(self, env, aId, aType, capacity, qos, procTime, transmissionTime, graph, accessDelay, activationPower):
+		super().__init__(env, aId, aType, capacity, qos, procTime, transmissionTime, graph)
+		self.role = "Cloud"
+		self.accessDelay = accessDelay
+		self.activationPower = activationPower
+
+#latency budget (in seconds) of each O-RAN control loop, as defined in the qualification:
+#RT (O-DU<->O-RU/vBBU fronthaul) < 10ms; NearRT (Near-RT RIC/xApps) 10ms-1s; NonRT (Non-RT RIC/rApps) > 1s (no strict upper bound)
+CONTROL_LOOPS = {
+	"RT": 0.010,
+	"NearRT": 1.0,
+	"NonRT": None,
+}
+
+#this class represents the Layer 3 (Fronthaul) placeable function that processes one RRH's
+#baseband signal. It does not own a SimPy process/queue itself: its hostNode (an EdgeNode or
+#CloudNode) is where the actual frame processing happens, and hostNode is kept updated by the
+#ControlPlane. This is what allows a vBBU to "migrate" between Edge and Cloud during the simulation
+class VBBU(object):
+	def __init__(self, aId, ownerRRH):
+		self.aId = "VBBU:"+str(aId)
+		self.aType = "VBBU"
+		self.ownerRRH = ownerRRH
+		self.controlLoop = "RT"
+		self.maxLatency = CONTROL_LOOPS["RT"]
+		self.hostNode = None#aId of the EdgeNode/CloudNode currently hosting this vBBU
+
+#this class represents the Layer 2 (O-RAN Applications) placeable functions: Non-RT RIC (rApps),
+#Near-RT RIC (xApps) and RT-RIC, as defined in the qualification's Layer 2 taxonomy. Like the vBBU,
+#it carries only placement metadata - it is instantiated and placed by the ControlPlane at bootstrap;
+#simulating its E2/A1 message traffic is out of scope for this iteration of the simulator
+class ORANFunction(object):
+	def __init__(self, aId, aType, controlLoop):
+		self.aId = aType+":"+str(aId)
+		self.aType = aType
+		self.controlLoop = controlLoop
+		self.maxLatency = CONTROL_LOOPS[controlLoop]
+		self.hostNode = None
+
+class NonRTRIC(ORANFunction):
+	def __init__(self, aId):
+		super().__init__(aId, "NonRTRIC", "NonRT")
+
+class NearRTRIC(ORANFunction):
+	def __init__(self, aId):
+		super().__init__(aId, "NearRTRIC", "NearRT")
+
+class RTRIC(ORANFunction):
+	def __init__(self, aId):
+		super().__init__(aId, "RTRIC", "RT")
+
+#maps the aType used in configurations.xml's <ORANFunctions> block to its class
+ORAN_FUNCTION_TYPES = {
+	"NonRTRIC": NonRTRIC,
+	"NearRTRIC": NearRTRIC,
+	"RTRIC": RTRIC,
+}
+
+#interface for a placement decision algorithm. "function" is any placeable object with
+#.controlLoop/.maxLatency/.hostNode (a VBBU or an ORANFunction). "candidateNodes" is the list of
+#EdgeNode/CloudNode objects it may be hosted on. A future ML/RL-based policy plugs in here by
+#implementing decide() - no other part of the simulator needs to change
+class PlacementPolicy(abc.ABC):
+	@abc.abstractmethod
+	def decide(self, function, candidateNodes):
+		pass
+
+#initial heuristic policy: functions with a strict control loop (RT/NearRT) are preferably hosted
+#at the Edge (to keep them close to the RRHs/UEs); functions without a strict budget (NonRT) are
+#preferably centralized at the Cloud. Within the preferred tier, picks the least-loaded node with
+#spare capacity, breaking ties randomly among every node at that minimum load. Without this,
+#Python's min() always resolves a tie to the first candidate in list order - harmless with a couple
+#of nodes, but with many equally-idle candidates (e.g. every Edge at load 0 when the simulation
+#starts) it makes every simultaneous caller pick the exact same node, a thundering-herd collapse
+#that was observed and fixed while validating the 30-RRH/5-Edge scenario.
+#Returns None (the request is blocked, as in old/graph.py's getBlockingProbability - traffic that
+#could not be routed to any node) only when NO candidate node has spare capacity at all
+class LatencyAwarePolicy(PlacementPolicy):
+	def decide(self, function, candidateNodes):
+		eligible = [n for n in candidateNodes if n.hasCapacity()]
+		if not eligible:
+			return None
+		preferredRole = "Edge" if function.controlLoop in ("RT", "NearRT") else "Cloud"
+		preferred = [n for n in eligible if n.role == preferredRole]
+		chosenPool = preferred if preferred else eligible
+		loadRatio = lambda n: n.currentLoad / n.processingCapacity if n.processingCapacity else float("inf")
+		minRatio = min(loadRatio(n) for n in chosenPool)
+		tied = [n for n in chosenPool if loadRatio(n) == minRatio]
+		return random.choice(tied)
+
+#this class represents the control plane that invokes the placement algorithm for every Layer 2/3
+#function and keeps track of where each one is currently hosted. It owns a PlacementPolicy instance -
+#swapping self.policy for a ML/RL-based policy is the only change needed to plug in a trained agent
 class ControlPlane(object):
-	pass
+	def __init__(self, env, graph, policy):
+		self.env = env
+		self.graph = graph
+		self.policy = policy
+		self.hostedFunctions = {}#node.aId -> set of function aIds currently hosted there, used for activeNodes()/energyConsumption()
+
+	#asks the policy where "function" should be hosted among "candidateNodes". Returns the chosen
+	#node, records a migration if the decision changed its current host, and updates the live
+	#hostedFunctions view used by activeNodes()/energyConsumption(). If the policy blocks the
+	#request (no candidate node has spare capacity), records the blocking and returns None -
+	#the function keeps whatever host it had before, exactly like lost/unrouted traffic in
+	#old/graph.py's getBlockingProbability
+	def placeFunction(self, function, candidateNodes):
+		node = self.policy.decide(function, candidateNodes)
+		if node is None:
+			util.recordBlocking(function.aId, function.controlLoop, self.env.now)
+			return None
+		if function.hostNode is not None and function.hostNode != node.aId:
+			util.recordMigration(function.aId, function.hostNode, node.aId, self.env.now)
+			self.hostedFunctions.get(function.hostNode, set()).discard(function.aId)
+		function.hostNode = node.aId
+		self.hostedFunctions.setdefault(node.aId, set()).add(function.aId)
+		return node
+
+	#nodes among candidateNodes that currently host at least one function - the same "active if
+	#something is assigned to it" criterion as old/graph.py's countActNodes()
+	def activeNodes(self, candidateNodes):
+		return [n for n in candidateNodes if self.hostedFunctions.get(n.aId)]
+
+	#power cost of the current placement: activationPower summed over active nodes only. Passing
+	#alwaysOn=True instead sums every candidate node, regardless of use - the "keep everything
+	#powered on" baseline that the consolidation heuristic is meant to save against, mirroring
+	#old/graph.py's overallPowerConsumption() (fixed cost per active node)
+	def energyConsumption(self, candidateNodes, alwaysOn=False):
+		nodes = candidateNodes if alwaysOn else self.activeNodes(candidateNodes)
+		return sum(n.activationPower for n in nodes)
+
+#periodically samples a node's utilization (currentLoad/processingCapacity) for later analysis
+def utilizationMonitor(env, node, interval):
+	while True:
+		util.recordUtilization(node.aId, env.now, node.currentLoad, node.processingCapacity)
+		yield env.timeout(interval)
+
+#periodically samples how many candidateNodes are active and the resulting energy consumption,
+#against the always-on baseline, so energy savings from consolidation can be plotted over time
+def controlPlaneMonitor(env, controlPlane, candidateNodes, interval):
+	while True:
+		active = controlPlane.activeNodes(candidateNodes)
+		util.recordActiveNodes(env.now, len(active), len(candidateNodes))
+		util.recordEnergy(env.now, controlPlane.energyConsumption(candidateNodes, alwaysOn=False), controlPlane.energyConsumption(candidateNodes, alwaysOn=True))
+		yield env.timeout(interval)
