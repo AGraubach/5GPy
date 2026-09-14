@@ -74,7 +74,7 @@ node (one IoT use case, as before). `configurations_test_sample.xml` keeps the o
     when called with `alwaysOn=True` - the "everything stays powered on" baseline the placement
     heuristic is meant to save against by consolidating functions onto fewer nodes.
 
-## Scaling up: what broke and how it was fixed
+## Scaling up
 
 Going from 4 to tens of RRHs surfaced two real bugs in the placement logic, both fixed in
 `network.py`/`simulation.py` rather than worked around:
